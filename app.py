@@ -1,9 +1,10 @@
 """
 Notes Management System
-Flask + MySQL full-stack CRUD application with authentication.
+Flask + SQLite full-stack CRUD application with authentication.
 """
 
 import os
+import sqlite3
 from datetime import timedelta, datetime
 import random
 from functools import wraps
@@ -16,8 +17,6 @@ except ImportError:
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-import mysql.connector
-from mysql.connector import Error
 from flask_mail import Mail, Message
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -31,16 +30,64 @@ app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key-in-product
 app.permanent_session_lifetime = timedelta(days=1)
 
 # ---------------------------------------------------------
-# DATABASE CONFIGURATION
-# Reads from environment variables with local fallbacks
+# DATABASE CONFIGURATION (SQLite)
+# Auto-configures: uses /tmp in serverless/Netlify, local file otherwise
 # ---------------------------------------------------------
-DB_CONFIG = {
-    "host": os.environ.get("DB_HOST", "localhost"),
-    "user": os.environ.get("DB_USER", "root"),
-    "password": os.environ.get("DB_PASSWORD", "root"),
-    "database": os.environ.get("DB_NAME", "notes_db"),
-    "port": int(os.environ.get("DB_PORT", 3306))
-}
+DB_PATH = os.environ.get(
+    "SQLITE_DB_PATH",
+    os.path.join(
+        "/tmp" if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or os.environ.get("NETLIFY") else BASE_DIR,
+        "notes.db"
+    )
+)
+
+
+def init_sqlite_db():
+    """Ensure SQLite tables are created automatically on startup."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                user_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);")
+        conn.commit()
+        conn.close()
+    except sqlite3.Error as e:
+        print(f"[DB INIT ERROR] {e}")
+
+
+# Initialize SQLite database and tables
+init_sqlite_db()
+
+
+def get_db_connection():
+    """Create and return a new SQLite connection with dictionary-style row access."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+        return conn
+    except sqlite3.Error as e:
+        print(f"[DB ERROR] {e}")
+        return None
+
 
 # EMAIL / OTP CONFIGURATION
 app.config["MAIL_SERVER"] = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
@@ -55,20 +102,6 @@ app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_DEFAULT_SENDER", app.co
 mail = Mail(app)
 
 OTP_VALID_MINUTES = 5
-
-
-def get_db_connection():
-    """Create and return a new MySQL connection."""
-    try:
-        config = DB_CONFIG.copy()
-        ssl_ca = os.environ.get("DB_SSL_CA")
-        if ssl_ca:
-            config["ssl_ca"] = ssl_ca
-        conn = mysql.connector.connect(**config)
-        return conn
-    except Error as e:
-        print(f"[DB ERROR] {e}")
-        return None
 
 
 # ---------------------------------------------------------
@@ -123,15 +156,15 @@ def register():
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
+                "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
                 (username, email, hashed_pw)
             )
             conn.commit()
             flash("Account created successfully! Please log in.", "success")
             return redirect(url_for("login"))
-        except mysql.connector.IntegrityError:
+        except sqlite3.IntegrityError:
             flash("Username or email already exists.", "danger")
-        except Error as e:
+        except sqlite3.Error as e:
             flash(f"Error: {e}", "danger")
         finally:
             cursor.close()
@@ -154,8 +187,8 @@ def login():
             flash("Database connection failed.", "danger")
             return redirect(url_for("login"))
 
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -178,27 +211,21 @@ def login():
 # ---------------------------------------------------------
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-
     if request.method == "POST":
-
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip()
 
         conn = get_db_connection()
-
         if not conn:
             flash("Database connection failed.", "danger")
             return redirect(url_for("forgot_password"))
 
-        cursor = conn.cursor(dictionary=True)
-
+        cursor = conn.cursor()
         cursor.execute(
-            "SELECT * FROM users WHERE username = %s AND email = %s",
+            "SELECT * FROM users WHERE username = ? AND email = ?",
             (username, email)
         )
-
         user = cursor.fetchone()
-
         cursor.close()
         conn.close()
 
@@ -213,19 +240,15 @@ def forgot_password():
         session["reset_user_id"] = user["id"]
         session["reset_otp"] = otp
         session["reset_email"] = user["email"]
-
-        # OTP expires after 5 minutes
         session["reset_otp_expiry"] = (
             datetime.utcnow().timestamp() + (OTP_VALID_MINUTES * 60)
         )
 
         try:
-
             msg = Message(
                 subject="NotesVault - Password Reset OTP",
                 recipients=[user["email"]],
-                body=f"""
-Hello {user["username"]},
+                body=f"""Hello {user["username"]},
 
 Your OTP for resetting your NotesVault password is:
 
@@ -239,19 +262,12 @@ Regards,
 NotesVault Team
 """
             )
-
             mail.send(msg)
-
             flash("OTP has been sent to your registered email.", "success")
-
             return redirect(url_for("verify_otp"))
-
         except Exception as e:
-
             flash("Unable to send OTP email. Please check your email settings.", "danger")
-
             print("EMAIL ERROR:", e)
-
             return redirect(url_for("forgot_password"))
 
     return render_template("forgot_password.html")
@@ -262,36 +278,24 @@ NotesVault Team
 # ---------------------------------------------------------
 @app.route("/verify-otp", methods=["GET", "POST"])
 def verify_otp():
-
     if "reset_user_id" not in session or "reset_otp" not in session:
         flash("Please start the password reset process again.", "warning")
         return redirect(url_for("forgot_password"))
 
     if request.method == "POST":
-
         entered_otp = request.form.get("otp", "").strip()
 
-        # Check OTP expiry
         if datetime.utcnow().timestamp() > session.get("reset_otp_expiry", 0):
-
             flash("OTP has expired. Please request a new OTP.", "danger")
-
             session.pop("reset_otp", None)
             session.pop("reset_otp_expiry", None)
-
             return redirect(url_for("forgot_password"))
 
-        # Check OTP
         if entered_otp == session.get("reset_otp"):
-
             session["otp_verified"] = True
-
             flash("OTP verified successfully.", "success")
-
             return redirect(url_for("reset_password"))
-
         else:
-
             flash("Incorrect OTP. Please try again.", "danger")
 
     return render_template(
@@ -305,44 +309,31 @@ def verify_otp():
 # ---------------------------------------------------------
 @app.route("/reset-password", methods=["GET", "POST"])
 def reset_password():
-
     if "reset_user_id" not in session or not session.get("otp_verified"):
-
         flash("Please verify your OTP first.", "warning")
-
         return redirect(url_for("forgot_password"))
 
     if request.method == "POST":
-
         new_password = request.form.get("new_password", "")
         confirm_password = request.form.get("confirm_password", "")
 
         if new_password != confirm_password:
-
             flash("Passwords do not match.", "danger")
-
             return redirect(url_for("reset_password"))
 
-        # Hash new password
         hashed_pw = generate_password_hash(new_password)
 
         conn = get_db_connection()
-
         if not conn:
-
             flash("Database connection failed.", "danger")
-
             return redirect(url_for("reset_password"))
 
         cursor = conn.cursor()
-
         cursor.execute(
-            "UPDATE users SET password = %s WHERE id = %s",
+            "UPDATE users SET password = ? WHERE id = ?",
             (hashed_pw, session["reset_user_id"])
         )
-
         conn.commit()
-
         cursor.close()
         conn.close()
 
@@ -354,7 +345,6 @@ def reset_password():
         session.pop("otp_verified", None)
 
         flash("Password reset successfully! Please log in.", "success")
-
         return redirect(url_for("login"))
 
     return render_template("reset_password.html")
@@ -378,9 +368,9 @@ def logout():
 @login_required
 def dashboard():
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM notes WHERE user_id = %s ORDER BY created_at DESC",
+        "SELECT * FROM notes WHERE user_id = ? ORDER BY created_at DESC",
         (session["user_id"],)
     )
     notes = cursor.fetchall()
@@ -406,7 +396,7 @@ def add_note():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO notes (title, content, user_id) VALUES (%s, %s, %s)",
+            "INSERT INTO notes (title, content, user_id) VALUES (?, ?, ?)",
             (title, content, session["user_id"])
         )
         conn.commit()
@@ -426,9 +416,9 @@ def add_note():
 @login_required
 def view_note(note_id):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM notes WHERE id = %s AND user_id = %s",
+        "SELECT * FROM notes WHERE id = ? AND user_id = ?",
         (note_id, session["user_id"])
     )
     note = cursor.fetchone()
@@ -449,9 +439,9 @@ def view_note(note_id):
 @login_required
 def update_note(note_id):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM notes WHERE id = %s AND user_id = %s",
+        "SELECT * FROM notes WHERE id = ? AND user_id = ?",
         (note_id, session["user_id"])
     )
     note = cursor.fetchone()
@@ -468,7 +458,7 @@ def update_note(note_id):
 
         update_cursor = conn.cursor()
         update_cursor.execute(
-            "UPDATE notes SET title = %s, content = %s WHERE id = %s AND user_id = %s",
+            "UPDATE notes SET title = ?, content = ? WHERE id = ? AND user_id = ?",
             (title, content, note_id, session["user_id"])
         )
         conn.commit()
@@ -493,7 +483,7 @@ def delete_note(note_id):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "DELETE FROM notes WHERE id = %s AND user_id = %s",
+        "DELETE FROM notes WHERE id = ? AND user_id = ?",
         (note_id, session["user_id"])
     )
     conn.commit()

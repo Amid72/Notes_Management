@@ -16,8 +16,13 @@ ENV/
 # Netlify local files
 .netlify/
 
+# SQLite databases
+*.db
+*.sqlite3
+
 # OS / Editor files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+

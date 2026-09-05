@@ -1,5 +1,4 @@
 Flask==3.0.3
-mysql-connector-python==8.4.0
 Werkzeug==3.0.3
 Flask-Mail==0.10.0
 serverless-wsgi>=3.0.4
