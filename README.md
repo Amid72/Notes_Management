@@ -1,5 +1,5 @@
 # NotesVault — Notes Management System (Flask + MySQL)
-https://notesmanage.onrender.com/viewall
+https://notesmanage.onrender.com/login
 A full-stack notes app with secure authentication, full CRUD, a realistic
 3D-animated login/register experience, and animated 3D note cards.
 
