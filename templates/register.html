@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Register - NotesVault{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+
+{% block content %}
+<div class="auth-scene">
+  <div class="floating-shapes">
+    <div class="shape cube cube2">
+      <div class="face front"></div>
+      <div class="face back"></div>
+      <div class="face left"></div>
+      <div class="face right"></div>
+      <div class="face top"></div>
+      <div class="face bottom"></div>
+    </div>
+    <div class="shape sphere sphere2"></div>
+    <div class="shape ring ring2"></div>
+  </div>
+
+  <div class="auth-card-wrapper">
+    <div class="auth-card tilt-card" id="registerCard">
+      <div class="auth-card-glow"></div>
+      <div class="text-center mb-4">
+        <div class="auth-icon-3d"><i class="bi bi-person-plus-fill"></i></div>
+        <h2 class="auth-title">Create Account</h2>
+        <p class="auth-subtitle">Join NotesVault and start capturing ideas</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('register') }}" class="auth-form">
+        <div class="form-floating-3d mb-3">
+          <i class="bi bi-person-fill field-icon"></i>
+          <input type="text" class="form-control input-3d" name="username" placeholder="Username" required autofocus>
+          <label>Username</label>
+        </div>
+
+        <div class="form-floating-3d mb-3">
+          <i class="bi bi-envelope-fill field-icon"></i>
+          <input type="email" class="form-control input-3d" name="email" placeholder="Email" required>
+          <label>Email address</label>
+        </div>
+
+        <div class="form-floating-3d mb-3">
+          <i class="bi bi-lock-fill field-icon"></i>
+          <input type="password" class="form-control input-3d" name="password" placeholder="Password" required>
+          <label>Password</label>
+        </div>
+
+        <div class="form-floating-3d mb-3">
+          <i class="bi bi-lock-fill field-icon"></i>
+          <input type="password" class="form-control input-3d" name="confirm_password" placeholder="Confirm Password" required>
+          <label>Confirm Password</label>
+        </div>
+
+        <button type="submit" class="btn btn-3d-primary w-100">
+          <span>Create Account</span> <i class="bi bi-check-circle-fill"></i>
+        </button>
+      </form>
+
+      <p class="text-center mt-4 small">
+        Already have an account?
+        <a href="{{ url_for('login') }}" class="signup-link">Login</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/login3d.js') }}"></script>
+{% endblock %}

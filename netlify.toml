@@ -1,0 +1,22 @@
+[build]
+  # Copy static assets to public directory so Netlify CDN serves them directly with maximum speed
+  command = "python -c \"import shutil, os; os.makedirs('public', exist_ok=True); shutil.copytree('static', 'public/static', dirs_exist_ok=True)\""
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  # Ensure templates and static assets are packaged into the serverless function bundle
+  included_files = ["templates/**", "static/**", "schema.sql"]
+
+# Route all incoming requests to the serverless Flask function
+# Static files in /static are automatically served from the public folder first
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/app/:splat"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"

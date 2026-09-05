@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Edit Note - NotesVault{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="form-card-3d">
+      <div class="text-center mb-4">
+        <div class="auth-icon-3d small-icon"><i class="bi bi-pencil-square"></i></div>
+        <h3 class="section-title">Edit Note</h3>
+        <p class="text-muted">Update your note details below</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('update_note', note_id=note.id) }}">
+        <div class="form-floating-3d mb-3">
+          <i class="bi bi-type field-icon"></i>
+          <input type="text" class="form-control input-3d" name="title" value="{{ note.title }}" placeholder="Title" required autofocus>
+          <label>Note Title</label>
+        </div>
+
+        <div class="form-floating-3d mb-3">
+          <i class="bi bi-body-text field-icon textarea-icon"></i>
+          <textarea class="form-control input-3d textarea-3d" name="content" placeholder="Content" rows="8" required>{{ note.content }}</textarea>
+          <label>Note Content</label>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end">
+          <a href="{{ url_for('dashboard') }}" class="btn btn-secondary-3d">Cancel</a>
+          <button type="submit" class="btn btn-3d-primary"><i class="bi bi-save-fill"></i> Update Note</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

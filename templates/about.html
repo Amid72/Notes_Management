@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}About - NotesVault{% endblock %}
+
+{% block content %}
+<div class="text-center mb-5">
+  <h2 class="section-title"><i class="bi bi-info-circle-fill"></i> About NotesVault</h2>
+  <p class="text-muted">A secure Full Stack Notes Management System built with Flask &amp; MySQL</p>
+</div>
+
+<div class="row g-4 mb-5">
+  <div class="col-md-3 col-6">
+    <div class="stat-card-3d">
+      <i class="bi bi-shield-check"></i>
+      <h6>Secure Auth</h6>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card-3d">
+      <i class="bi bi-database-fill-lock"></i>
+      <h6>MySQL Storage</h6>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card-3d">
+      <i class="bi bi-pencil-square"></i>
+      <h6>Full CRUD</h6>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="stat-card-3d">
+      <i class="bi bi-phone-fill"></i>
+      <h6>Responsive UI</h6>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 align-items-stretch">
+  <div class="col-lg-6">
+    <div class="form-card-3d h-100">
+      <h4 class="mb-3"><i class="bi bi-person-badge-fill"></i> Admin / Developer</h4>
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="admin-avatar-3d"><i class="bi bi-person-workspace"></i></div>
+        <div>
+          <h5 class="mb-0">Project Administrator</h5>
+          <span class="text-muted small">Full Stack Developer (Flask + MySQL)</span>
+        </div>
+      </div>
+      <ul class="list-unstyled small admin-list">
+        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Designed database schema (users, notes)</li>
+        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Implemented secure password hashing</li>
+        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Built session-based authentication</li>
+        <li><i class="bi bi-check-circle-fill text-success me-2"></i>Developed responsive 3D UI with Bootstrap 5</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="form-card-3d h-100">
+      <h4 class="mb-3"><i class="bi bi-diagram-3-fill"></i> Modules Overview</h4>
+      <div class="accordion accordion-3d" id="moduleAccordion">
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#mod1">
+              <i class="bi bi-person-fill me-2"></i> User Module
+            </button>
+          </h2>
+          <div id="mod1" class="accordion-collapse collapse show" data-bs-parent="#moduleAccordion">
+            <div class="accordion-body small">Register, Login, Logout, Forgot/Reset Password and secure session management.</div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mod2">
+              <i class="bi bi-journal-text me-2"></i> Notes Module
+            </button>
+          </h2>
+          <div id="mod2" class="accordion-collapse collapse" data-bs-parent="#moduleAccordion">
+            <div class="accordion-body small">Create, Read (all/single), Update, and Delete notes — each scoped strictly to the logged-in user.</div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mod3">
+              <i class="bi bi-lock-fill me-2"></i> Security
+            </button>
+          </h2>
+          <div id="mod3" class="accordion-collapse collapse" data-bs-parent="#moduleAccordion">
+            <div class="accordion-body small">Werkzeug password hashing, per-user data isolation, and cascading deletes on account removal.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
