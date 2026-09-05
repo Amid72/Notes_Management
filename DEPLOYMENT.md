@@ -47,7 +47,7 @@ git init
 git add .
 git commit -m "Configure NotesVault for Netlify deployment"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/notes_app.git
+git remote add origin https://github.com/Amid72/Notes_Management.git
 git push -u origin main
 ```
 
